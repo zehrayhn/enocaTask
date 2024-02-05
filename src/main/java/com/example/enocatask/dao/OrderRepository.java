@@ -9,8 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order,Integer> {
-    List<Order> findByCustomerOrderByCreatedDateDesc(Customer customer);
+public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     Optional<Order> findByOrderCode(String orderCode);
 

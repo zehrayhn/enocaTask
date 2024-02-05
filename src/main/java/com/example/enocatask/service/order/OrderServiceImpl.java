@@ -1,23 +1,20 @@
 package com.example.enocatask.service.order;
 
-import com.example.enocatask.controller.OrderNotFoundException;
-import com.example.enocatask.converter.OrderItemDTO;
+import com.example.enocatask.exception.OrderNotFoundException;
+import com.example.enocatask.dto.OrderItemDTO;
 import com.example.enocatask.dao.OrderItemRepository;
 import com.example.enocatask.dao.OrderRepository;
 import com.example.enocatask.dto.OrderDTO;
 import com.example.enocatask.entities.*;
 import com.example.enocatask.service.cart.CartService;
-import org.apache.juli.logging.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -48,6 +45,10 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItem cartItem : customer.getCart().getItems()) {
+            if (!isStockAvailable(cartItem.getProduct(), cartItem.getQuantity())) {
+                throw new RuntimeException("Ürün stokta yetersiz: " + cartItem.getProduct().getName());
+            }
+
             OrderItem orderItem = new OrderItem();
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setQuantity(cartItem.getQuantity());
@@ -55,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setOrder(order);
 
             orderItems.add(orderItem);
+            updateStockQuantity(cartItem.getProduct(), cartItem.getQuantity());
         }
 
         order.setOrderItems(orderItems);
@@ -63,17 +65,26 @@ public class OrderServiceImpl implements OrderService {
 
         customer.getOrders().add(order);
 
-        // Sepetteki ürünleri kaldırma yerine sadece Order'a referans veren OrderItem'ları kaldır
         for (OrderItem orderItem : orderItems) {
             customer.getCart().getItems().removeIf(item -> item.getProduct().equals(orderItem.getProduct()));
         }
 
-        // Sepetteki totalAmount'ı güncelle
+
         double updatedTotalAmount = calculateTotalAmount(customer.getCart().getItems());
         customer.getCart().setTotalAmount(updatedTotalAmount);
 
         orderRepository.save(order);
     }
+
+    private boolean isStockAvailable(Product product, int quantity) {
+        return product.getStockQuantity() >= quantity;
+    }
+
+    @Override
+    public void updateStockQuantity(Product product, int quantity) {
+        product.setStockQuantity(product.getStockQuantity() - quantity);
+    }
+
     private String generateOrderCode() {
         return UUID.randomUUID().toString();
     }
@@ -110,16 +121,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private OrderDTO convertOrderToDTO(Order order) {
-        // OrderDTO sınıfını kullanarak Order nesnesini DTO'ya çevir
-        OrderDTO orderDTO = new OrderDTO();
-        // Gerekli alanları set et
-        orderDTO.setOrderCode(order.getOrderCode());
-        orderDTO.setTotalAmount(order.getTotalAmount());
-        // Diğer alanları da set et...
 
-        return orderDTO;
-    }
 
     private double calculateTotalAmount(List<CartItem> cartItems) {
         return cartItems.stream().mapToDouble(CartItem::getQuantity).sum();

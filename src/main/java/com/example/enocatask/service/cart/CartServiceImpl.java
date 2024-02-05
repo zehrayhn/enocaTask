@@ -1,21 +1,24 @@
 package com.example.enocatask.service.cart;
 
+import com.example.enocatask.converter.CartDTOConverter;
 import com.example.enocatask.dao.CartRepository;
 import com.example.enocatask.dao.CustomerRepository;
+import com.example.enocatask.dto.CartDTO;
 import com.example.enocatask.entities.Cart;
 import com.example.enocatask.entities.CartItem;
 import com.example.enocatask.entities.Customer;
 import com.example.enocatask.entities.Product;
-import com.example.enocatask.service.cart.CartService;
-import com.example.enocatask.service.order.OrderServiceImpl;
-import jakarta.transaction.Transactional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CartServiceImpl implements CartService {
@@ -23,23 +26,21 @@ public class CartServiceImpl implements CartService {
 
     private CustomerRepository customerRepository;
     private CartRepository cartRepository;
+    private CartDTOConverter cartDTOConverter;
 
     @Autowired
-    public CartServiceImpl(CustomerRepository customerRepository, CartRepository cartRepository) {
+
+    public CartServiceImpl(CustomerRepository customerRepository, CartRepository cartRepository, CartDTOConverter cartDTOConverter) {
         this.customerRepository = customerRepository;
         this.cartRepository = cartRepository;
+        this.cartDTOConverter = cartDTOConverter;
     }
-    @Override
-    public Cart createCartForCustomer(Customer customer) {
-        Cart cart = new Cart();
-        cart.setCustomer(customer);
-        return cartRepository.save(cart);
-    }
+
+
     @Override
     public void addProductToCart(Customer customer, Product product, int quantity) {
         Cart cart = customer.getCart();
 
-        // Eğer müşterinin sepiti yoksa yeni bir sepet oluştur
         if (cart == null) {
             cart = new Cart();
             cart.setCustomer(customer);
@@ -47,73 +48,110 @@ public class CartServiceImpl implements CartService {
         }
 
         if (!isStockAvailable(product, quantity)) {
-            // Stok yetersiz, uygun bir hata mesajı döndürün veya istisna fırlatın
             throw new RuntimeException("Ürün stokta yetersiz.");
         }
 
+        CartItem existingCartItem = findCartItemByProductAndCustomer(product, customer);
 
-        // Sepete ürünü ekle
-        CartItem cartItem = new CartItem();
-        cartItem.setCart(cart);
-        cartItem.setProduct(product);
-        cartItem.setQuantity(quantity);
+        if (existingCartItem != null) {
+            int newQuantity = existingCartItem.getQuantity() + quantity;
+            existingCartItem.setQuantity(newQuantity);
+        } else {
+            CartItem cartItem = new CartItem();
+            cartItem.setCart(cart);
+            cartItem.setProduct(product);
+            cartItem.setQuantity(quantity);
+            cart.getItems().add(cartItem);
+        }
 
-
-
-        cart.getItems().add(cartItem);
-
-
-        // Sepeti güncelle
-        cart=cartRepository.save(cart);
+        cart = cartRepository.save(cart);
         updateCartTotalAmount(cart);
 
     }
 
     @Override
+    public CartItem findCartItemByProductAndCustomer(Product product, Customer customer) {
+
+        Cart cart = customer.getCart();
+        if (cart != null) {
+            List<CartItem> cartItems = cart.getItems();
+            for (CartItem cartItem : cartItems) {
+                if (cartItem.getProduct().equals(product)) {
+                    return cartItem;
+                }
+            }
+        }
+        return null;
+
+    }
+
+    @Override
+    public ResponseEntity<?> getCart(int customerId) {
+        Optional<Customer> optionalCustomer = customerRepository.findById(customerId);
+
+        if (optionalCustomer.isPresent()) {
+            Customer customer = optionalCustomer.get();
+            Cart cart = customer.getCart();
+
+            if (cart == null) {
+                String noCartMessage = "Müşterinin sepeti bulunamadı.";
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(noCartMessage);
+            } else if (cart.getItems().isEmpty()) {
+                String emptyCartMessage = "Sepet boş.";
+                return ResponseEntity.ok(emptyCartMessage);
+            } else {
+                CartDTO cartDTO = cartDTOConverter.convertCartToDTO(cart);
+                return ResponseEntity.ok(cartDTO);
+            }
+        } else {
+            String errorMessage = "Müşteri bulunamadı. Müşteri ID: " + customerId;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMessage);
+        }
+    }
+
+
+    @Override
     public void updateCartItem(Cart cart, int productId, int newQuantity) {
-        // Sepetteki ürünleri kontrol et
         for (CartItem cartItem : cart.getItems()) {
             if (cartItem.getProduct().getId() == productId) {
-                // Güncellenen miktarı ayarla
+                if (!isStockAvailable(cartItem.getProduct(), newQuantity)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ürün stokta yetersiz.");
+                }
                 cartItem.setQuantity(newQuantity);
-                // Cart'ın toplam tutarını güncelle (isteğe bağlı)
-                // cart.setTotalAmount(updatedTotalAmount);
-
-                break; // İlgili ürünü bulduk, döngüden çık
+                break;
             }
         }
 
-        // Cart'ı güncelle
         cartRepository.save(cart);
         updateCartTotalAmount(cart);
     }
 
     @Override
-    public void emptyCart(Cart cart) {
+    public ResponseEntity<String> emptyCart(Cart cart) {
+        if (cart.getItems().isEmpty()) {
+            String emptyCartMessage = "Sepet zaten boş.";
+            return ResponseEntity.ok(emptyCartMessage);
+        }
 
         List<CartItem> cartItems = new ArrayList<>(cart.getItems());
 
-        // Sepetin toplam tutarını sıfırla
         cart.setTotalAmount(0.0);
 
-        // Kopyalanan ürünleri kullanarak stokları güncelle
         for (CartItem cartItem : cartItems) {
             Product product = cartItem.getProduct();
+
             int quantityToRemove = cartItem.getQuantity();
             updateStockQuantity(product, quantityToRemove);
             cart.getItems().clear();
         }
 
-        // Kopyalanan ürünleri sepetten kaldır
-
-
-        // Sepeti güncelle
         try {
             cartRepository.save(cart);
+            return ResponseEntity.ok("Sepet boşaltıldı.");
         } catch (Exception e) {
             logger.error(e.getMessage() + " emptycarthata");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Sepet boşaltılırken bir hata oluştu.");
         }
-
     }
 
     @Override
@@ -123,27 +161,19 @@ public class CartServiceImpl implements CartService {
                 .findFirst()
                 .orElse(null);
 
-        // Eğer ürün bulunduysa, sepetten kaldır
         if (cartItemToRemove != null) {
             int currentQuantity = cartItemToRemove.getQuantity();
 
             if (currentQuantity > quantityToRemove) {
-                // Belirtilen miktar kadar ürün varsa sadece miktarını azalt
                 cartItemToRemove.setQuantity(currentQuantity - quantityToRemove);
             } else {
-                // Belirtilen miktar kadar ürün yoksa tamamen kaldır
                 cart.getItems().remove(cartItemToRemove);
             }
             updateStockQuantity(product, quantityToRemove);
-            // Sepetin toplam tutarını güncelle
-
-            // Sepeti güncelle
             cartRepository.save(cart);
             updateCartTotalAmount(cart);
         }
     }
-
-
 
     @Override
     public boolean isStockAvailable(Product product, int quantity) {
@@ -155,12 +185,11 @@ public class CartServiceImpl implements CartService {
         product.setStockQuantity(product.getStockQuantity() - quantity);
     }
 
+
     private void updateCartTotalAmount(Cart cart) {
-        // Sepetteki tüm ürünlerin toplam tutarını hesapla
         double totalAmount = cart.getItems().stream()
                 .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
                 .sum();
-        // Sepetin toplam tutarını güncelle
         cart.setTotalAmount(totalAmount);
         cartRepository.save(cart);
     }

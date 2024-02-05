@@ -8,7 +8,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "carts")
-public class Cart extends BaseEntity{
+public class Cart extends BaseEntity {
     @JsonBackReference
     @OneToOne
     @JoinColumn(name = "customer_id")
@@ -20,6 +20,7 @@ public class Cart extends BaseEntity{
     public List<CartItem> getItems() {
         return items;
     }
+
     @Column
     private double totalAmount;
 
@@ -44,8 +45,6 @@ public class Cart extends BaseEntity{
         this.totalAmount = totalAmount;
     }
 
-  // Sepette biriken toplam tutar
-    // diğer sepet özellikleri
     public Customer getCustomer() {
         return customer;
     }

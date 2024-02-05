@@ -1,13 +1,11 @@
 package com.example.enocatask.dto;
 
-import com.example.enocatask.converter.OrderItemDTO;
 import com.example.enocatask.entities.Order;
 import com.example.enocatask.entities.OrderItem;
 import jakarta.persistence.Column;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class OrderDTO {
 
@@ -25,7 +23,6 @@ public class OrderDTO {
     public void setOrderItems(List<OrderItemDTO> orderItems) {
         this.orderItems = orderItems;
     }
-// Getter ve Setter metotları
 
     public static OrderDTO convertToDTO(Order order) {
         OrderDTO orderDTO = new OrderDTO();
@@ -41,6 +38,7 @@ public class OrderDTO {
 
         return orderDTO;
     }
+
     public double getTotalAmount() {
         return totalAmount;
     }

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
     public int getId() {
@@ -26,7 +26,6 @@ public class BaseEntity {
     private LocalDateTime createdDate;
     private LocalDateTime lastModifiedDate;
 
-    // Getter ve setter metotları
 
     public BaseEntity() {
     }

@@ -8,14 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(value="/product")
+@RequestMapping(value = "/product")
 public class ProductController {
 
     private ProductService productService;
 
     @Autowired
     public ProductController(ProductService productService) {
-        this.productService= productService;
+        this.productService = productService;
     }
 
     @PostMapping("/createproduct")
@@ -24,8 +24,8 @@ public class ProductController {
     }
 
     @PutMapping("/{productId}")
-    public Product updateProduct(@PathVariable("productId") int productId,@RequestBody Product product) {
-        return productService.updateProduct(productId,product);
+    public Product updateProduct(@PathVariable("productId") int productId, @RequestBody Product product) {
+        return productService.updateProduct(productId, product);
     }
 
     @DeleteMapping("/{id}")

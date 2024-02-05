@@ -9,8 +9,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name="cart_items")
-public class CartItem extends BaseEntity{
+@Table(name = "cart_items")
+public class CartItem extends BaseEntity {
     @JsonIgnore
     @ManyToOne
     private Cart cart;
@@ -44,7 +44,6 @@ public class CartItem extends BaseEntity{
                 ", quantity=" + quantity +
                 '}';
     }
-
 
 
     public void setCart(Cart cart) {

@@ -7,12 +7,10 @@ public class CustomerDTO {
     @NotBlank(message = "Name is required")
     private String name;
 
-    public CustomerDTO( String name) {
+    public CustomerDTO(String name) {
 
         this.name = name;
-        }
-
-
+    }
 
     public String getName() {
         return name;
@@ -21,8 +19,6 @@ public class CustomerDTO {
     public void setName(String name) {
         this.name = name;
     }
-
-
 
     public CustomerDTO() {
     }

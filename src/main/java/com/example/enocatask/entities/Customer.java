@@ -8,15 +8,14 @@ import java.util.List;
 
 @Entity
 @Table(name = "customers")
-public class Customer extends BaseEntity{
+public class Customer extends BaseEntity {
 
     @NotBlank(message = "Name is required")
     private String name;
 
-  //  @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-  @JsonIgnore
-  @OneToOne(mappedBy = "customer")
-  private Cart cart;
+    @JsonIgnore
+    @OneToOne(mappedBy = "customer")
+    private Cart cart;
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Order> orders;

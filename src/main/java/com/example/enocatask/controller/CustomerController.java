@@ -1,7 +1,7 @@
 package com.example.enocatask.controller;
 
 import com.example.enocatask.dto.CustomerDTO;
-import com.example.enocatask.service.customer.CustomerException;
+import com.example.enocatask.exception.CustomerException;
 import com.example.enocatask.service.customer.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

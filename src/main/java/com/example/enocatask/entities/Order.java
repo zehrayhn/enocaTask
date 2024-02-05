@@ -9,7 +9,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
-public class Order extends BaseEntity{
+public class Order extends BaseEntity {
     @JsonIgnore
     @ManyToOne
     private Customer customer;
@@ -22,14 +22,13 @@ public class Order extends BaseEntity{
     private String orderCode;
 
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL,fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<OrderItem> orderItems = new ArrayList<>();
-
-
 
 
     public Order() {
     }
+
     public String getOrderCode() {
         return orderCode;
     }
@@ -73,7 +72,6 @@ public class Order extends BaseEntity{
                 ", orderItems=" + orderItems +
                 '}';
     }
-
 
 
     public double getTotalPrice() {
